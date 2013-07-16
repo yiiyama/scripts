@@ -63,8 +63,13 @@ cpr(){
 		if [ ! -e $2/$entry ]; then
 		    echo "###Patch: File $2/$entry does not exist"
                 else
-		    echo "###Patch: diff $1/$entry $2/$entry"
-                    [ $nameOnly -eq 0 ] && (diff $1/$entry $2/$entry; echo "")
+                    if [ $nameOnly -eq 1 ]; then
+                        [ -n "$(diff $1/$entry $2/$entry)" ] && echo "###Patch: diff $1/$entry $2/$entry"
+                    else
+                        echo "###Patch: diff $1/$entry $2/$entry"
+                        diff $1/$entry $2/$entry
+                        echo ""
+                    fi
 		fi
 	    else
 		if [ ! -e $2/$entry -o -n "$(diff $1/$entry $2/$entry)" ]; then

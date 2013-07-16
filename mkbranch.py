@@ -17,7 +17,7 @@ try:
 except:
     sys.exit(1)
 
-prog = re.compile('[ ]*([a-zA-Z_ ]+)[ ]+([a-zA-Z_][a-zA-Z0-9_]*)(|\[[a-zA-Z0-9:_]+\]);')
+prog = re.compile('[ ]*([a-zA-Z_ ]+)[ ]+([a-zA-Z_][a-zA-Z0-9_]*)(|\[[a-zA-Z0-9:_]+\]|\(.*\));')
 
 output = ""
 
