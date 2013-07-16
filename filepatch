@@ -3,6 +3,7 @@
 dodiff=0
 force=0
 single=0
+nameOnly=0
 while [ $# -gt 0 ]; do
     case $1 in
 	-d)
@@ -17,6 +18,10 @@ while [ $# -gt 0 ]; do
 	    single=1
 	    shift
 	    ;;
+        -n)
+            nameOnly=1
+            shift
+            ;;
 	*)
 	    break
 	    ;;
@@ -24,31 +29,22 @@ while [ $# -gt 0 ]; do
 done
 
 cpr(){
-    if [ $dodiff -eq 1 ]; then
-	if [ $single -eq 0 ]; then
-	    for entry in $(ls $2); do
-		if [ $entry = "CVS" -o $(expr "$entry" : '[^~]*[~]') -ne 0 ]; then
-		    continue
-		fi
-		
-		if [ -e $1/$entry ]; then
-		    continue
-		fi
-		
-		if [ -d $2/$entry ]; then
-		    echo "###Patch: Directory $1/$entry does not exist"
-		elif [ -f $2/$entry ]; then
-		    echo "###Patch: File $1/$entry does not exist"
-		fi
+    if [ $dodiff -eq 1 -a $single -eq 0 ]; then
+        for entry in $(ls $2); do
+            [ $entry = "CVS" -o $(expr "$entry" : '[^~]*[~]') -ne 0 ] && continue
+            [ -e $1/$entry ] && continue
 
-	    done
-	fi
+            if [ -d $2/$entry ]; then
+                echo "###Patch: Directory $1/$entry does not exist"
+            elif [ -f $2/$entry ]; then
+                echo "###Patch: File $1/$entry does not exist"
+            fi
+
+        done
     fi
 
     for entry in $(ls $1); do
-	if [ $entry = "CVS" -o $(expr "$entry" : '[^~]*[~]') -ne 0 ]; then
-	    continue
-	fi
+        [ $entry = "CVS" -o $(expr "$entry" : '[^~]*[~]') -ne 0 ] && continue
 
 	if [ -d $1/$entry -a ! -e $2/$entry ]; then
 	    if [ $dodiff -eq 1 ]; then
@@ -64,12 +60,11 @@ cpr(){
 	    cpr $1/$entry $2/$entry
 	else
 	    if [ $dodiff -eq 1 ]; then
-		if [ -e $2/$entry ]; then
-		    echo "###Patch: diff $1/$entry $2/$entry"
-		    diff $1/$entry $2/$entry
-		    echo ""
-		else
+		if [ ! -e $2/$entry ]; then
 		    echo "###Patch: File $2/$entry does not exist"
+                else
+		    echo "###Patch: diff $1/$entry $2/$entry"
+                    [ $nameOnly -eq 0 ] && (diff $1/$entry $2/$entry; echo "")
 		fi
 	    else
 		if [ ! -e $2/$entry -o -n "$(diff $1/$entry $2/$entry)" ]; then
