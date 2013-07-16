@@ -1,0 +1,51 @@
+which voms-proxy-init 2>/dev/null || source /afs/cern.ch/cms/LCG/LCG-2/UI/cms_ui_env.sh
+
+voms-proxy-init -voms cms
+
+t2ls(){
+    path=$1 #path under yiiyama
+    srmls srm://srm-dcache.rcac.purdue.edu:8443/srm/v2/server?SFN=/mnt/hadoop/store/user/yiiyama/${path}
+}
+
+t2up(){
+    local=$1 #full path
+    remote=$2 #path under yiiyama
+    lcg-cp -b -D srmv2 file://${local} srm://srm-dcache.rcac.purdue.edu:8443/srm/v2/server?SFN=/mnt/hadoop/store/user/yiiyama/${remote}
+}
+
+t2down(){
+    remote=$1 #path under yiiyama
+    local=$2 #full path
+    lcg-cp -b -D srmv2 srm://srm-dcache.rcac.purdue.edu:8443/srm/v2/server?SFN=/mnt/hadoop/store/user/yiiyama/${remote} file://${local}
+}
+
+t2rm(){
+    remote=$1 #path under yiiyama
+    lcg-del -b -l -D srmv2 srm://srm-dcache.rcac.purdue.edu:8443/srm/v2/server?SFN=/mnt/hadoop/store/user/yiiyama/${remote}
+}
+
+dcachedown(){
+    #from a FNAL node
+    remote=$1 #path under /pnfs/cms/WAX
+    local=$2 #full path
+    lcg-cp -b -D srmv2 srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/$remote file:///$local
+}
+
+fnaleosdown(){
+    remote=$1 #path under /eos/uscms
+    local=$2 #full path
+    lcg-cp -b -D srmv2 srm://cmseos.fnal.gov:8443/srm/v2/server?SFN=/eos/uscms$remote file:///$local
+}
+
+dcache2eos(){
+    #from a FNAL node
+    fnal=$1 #path under /pnfs/cms/WAX
+    cern=$2 #path under /store/user/yiiyama
+    caf=$3/
+    lcg-cp -b -D srmv2 srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/$fnal srm://srm-eoscms.cern.ch:8443/srm/v2/server?SFN=//eos/cms/store/${caf}user/yiiyama$cern
+}
+
+#fnaleos2eos needs to be done from FNAL
+# fnal=$1 #path under /eos/uscms
+# cern=$2 #path under /store/user/yiiyama
+# lcg-cp -b -D srmv2 file:///eos/uscms$fnal srm://srm-eoscms.cern.ch:8443/srm/v2/server?SFN=/eos/cms/store/user/yiiyama$cern

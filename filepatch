@@ -1,0 +1,117 @@
+#!/bin/bash
+
+dodiff=0
+force=0
+single=0
+while [ $# -gt 0 ]; do
+    case $1 in
+	-d)
+	    dodiff=1
+	    shift
+	    ;;
+	-f)
+	    force=1
+	    shift
+	    ;;
+	-s)
+	    single=1
+	    shift
+	    ;;
+	*)
+	    break
+	    ;;
+    esac
+done
+
+cpr(){
+    if [ $dodiff -eq 1 ]; then
+	if [ $single -eq 0 ]; then
+	    for entry in $(ls $2); do
+		if [ $entry = "CVS" -o $(expr "$entry" : '[^~]*[~]') -ne 0 ]; then
+		    continue
+		fi
+		
+		if [ -e $1/$entry ]; then
+		    continue
+		fi
+		
+		if [ -d $2/$entry ]; then
+		    echo "###Patch: Directory $1/$entry does not exist"
+		elif [ -f $2/$entry ]; then
+		    echo "###Patch: File $1/$entry does not exist"
+		fi
+
+	    done
+	fi
+    fi
+
+    for entry in $(ls $1); do
+	if [ $entry = "CVS" -o $(expr "$entry" : '[^~]*[~]') -ne 0 ]; then
+	    continue
+	fi
+
+	if [ -d $1/$entry -a ! -e $2/$entry ]; then
+	    if [ $dodiff -eq 1 ]; then
+		echo "###Patch: Directory $2/$entry does not exist"
+		continue
+	    else
+		echo "###Patch: mkdir $2/$entry"
+		mkdir $2/$entry
+	    fi
+	fi
+
+	if [ -d $1/$entry ]; then
+	    cpr $1/$entry $2/$entry
+	else
+	    if [ $dodiff -eq 1 ]; then
+		if [ -e $2/$entry ]; then
+		    echo "###Patch: diff $1/$entry $2/$entry"
+		    diff $1/$entry $2/$entry
+		    echo ""
+		else
+		    echo "###Patch: File $2/$entry does not exist"
+		fi
+	    else
+		if [ ! -e $2/$entry -o -n "$(diff $1/$entry $2/$entry)" ]; then
+		    copy=0
+		    if [ -e $2/$entry -a $force -eq 0 ]; then
+			copy=-1
+			while [ $copy -lt 0 ]; do
+			    echo "###Patch: Overwrite $2/$entry? (Y=yes|n=no|d=diff)"
+			    read answer
+			    case $answer in
+				'Y')
+				    copy=1
+				    ;;
+				'n')
+				    copy=0
+				    ;;
+				'd')
+				    echo "###Patch: diff $1/$entry $2/$entry"
+				    diff $1/$entry $2/$entry
+				    ;;
+				*)
+				    ;;
+			    esac
+			done
+		    else
+			copy=1
+		    fi
+		    if [ $copy -eq 1 ]; then 
+			echo "###Patch: cp $1/$entry $2/"
+			cp $1/$entry $2/
+		    fi
+		fi
+	    fi
+	fi
+    done
+}
+
+if [ ! -d "$1" -o ! -d "$2" ]; then
+    echo "Usage: patch DIR1 DIR2"
+    exit 1
+fi
+
+cpr $1 $2
+
+

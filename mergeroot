@@ -1,0 +1,143 @@
+#!/bin/bash
+
+src1=$1
+src2=$2
+dest=$3
+
+if [ -z "$src1" -o -z "$src2" -o -z "$dest" ]; then
+    echo "Usage: mergeroot src1 src2 dest"
+    exit
+fi
+
+which root > /dev/null 2>&1 || exit
+
+echo '
+TString indent;
+
+void clonedir(TDirectory const* src, TDirectory* dest)
+{
+  std::cout << indent << src->GetName() << " (clone)" << std::endl;
+
+  TList* objs = src->GetListOfKeys();
+
+  TKey* key;
+  TObject* obj = 0;
+
+  TListIter* itr = (TListIter*)objs->MakeIterator();
+  while((key = (TKey*)(itr->Next()))){
+
+    obj = key->ReadObj();
+
+    if(obj->InheritsFrom("TDirectory")){
+      indent += "  ";
+      TDirectory* dir = dest->mkdir(obj->GetName());
+      clonedir((TDirectory*)(obj), dir);
+    }
+    else if(obj->InheritsFrom("TNamed")){
+      dest->cd();
+      obj->Clone();
+    }
+
+  }
+
+  indent = indent(0, indent.Length() - 2);
+}
+
+void mergedir(TDirectory const* src1, TDirectory const* src2, TDirectory* dest)
+{
+  std::cout << indent << src1->GetName() << " (merge)" << std::endl;
+
+  TList* objs1 = src1->GetListOfKeys();
+  TList* objs2 = src2->GetListOfKeys();
+
+  TList objs;
+
+  TListIter* itr1 = (TListIter*)objs1->MakeIterator();
+  TListIter* itr2 = (TListIter*)objs2->MakeIterator();
+
+  TObject* obj;
+  while((obj = itr1->Next())){
+    if(!objs.FindObject(obj->GetName()))
+      objs.Add(obj);
+  }
+  while((obj = itr2->Next())){
+    if(!objs.FindObject(obj->GetName()))
+      objs.Add(obj);
+  }
+
+  dest->cd();
+
+  TListIter* itr = (TListIter*)objs.MakeIterator();
+  while((obj = itr->Next())){
+    TKey* key = (TKey*)(obj);
+    TKey* key1 = src1->GetKey(obj->GetName());
+    TKey* key2 = src2->GetKey(obj->GetName());
+
+    TObject* obj = key->ReadObj();
+    TObject* obj1 = key1 ? key1->ReadObj() : 0;
+    TObject* obj2 = key2 ? key2->ReadObj() : 0;
+
+    if(obj->InheritsFrom("TDirectory")){
+      TDirectory* dir = dest->mkdir(obj->GetName());
+
+      indent += "  ";
+
+      if(obj1 && obj2)
+	mergedir((TDirectory*)(obj1), (TDirectory*)(obj2), dir);
+      else if(obj1)
+	clonedir((TDirectory*)(obj1), dir);
+      else if(obj2)
+	clonedir((TDirectory*)(obj2), dir);
+    }
+    else if(obj->InheritsFrom("TH1")){
+      if(obj1 && obj2){
+	TH1* hclone = (TH1*)(obj1->Clone());
+	hclone->Add((TH1*)(obj2));
+      }
+      else if(obj1)
+	obj1->Clone();
+      else if(obj2)
+	obj2->Clone();
+    }
+    else if(obj->InheritsFrom("TTree")){
+      TList treeList;
+      if(obj1)
+        treeList.Add(obj1);
+      if(obj2)
+        treeList.Add(obj2);
+
+      TTree::MergeTrees(&treeList);
+    }
+    else if(obj->InheritsFrom("TNamed")){
+      if(obj1)
+	obj1->Clone();
+      else if(obj2)
+	obj2->Clone();
+    }
+  }
+
+  if(indent.Length() >= 2) indent = indent(0, indent.Length() - 2);
+}
+
+void mergeroot(char const* name1, char const* name2, char const* merged)
+{
+  TFile* file1 = new TFile(name1);
+  TFile* file2 = new TFile(name2);
+
+  if(!file1 || file1->IsZombie() || !file2 || file2->IsZombie()){
+    std::cerr << "IOError" << std::endl;
+    return;
+  }
+
+  TFile* output = new TFile(merged, "recreate");
+
+  mergedir(file1, file2, output);
+
+  output->Write();
+  output->Close();
+}
+' > mergeroot.C
+
+root -q -l "mergeroot.C(\"$src1\", \"$src2\", \"$dest\")"
+
+rm mergeroot.C

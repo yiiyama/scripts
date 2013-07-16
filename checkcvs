@@ -1,0 +1,50 @@
+#!/bin/bash
+
+checkcvs(){
+    local thisdir=$(cd $1; pwd)
+
+    if [ ! -d $thisdir/CVS ]; then
+	echo "cd $thisdir/..; cvs add $thisdir"
+	return
+    fi
+
+    list=`ls $thisdir`
+
+    for entry in $list; do
+	if [ $entry = "CVS" -o $entry = $(basename $0) -o $(expr "$entry" : '[^~]*[~]') -ne 0 ]; then
+	    continue
+	fi
+
+	line=`grep \/$entry\/ $thisdir/CVS/Entries`
+
+	if [ -z "$line" ]; then
+	    echo "cd $thisdir; cvs add $entry"
+	    continue
+	fi
+
+	if [ -d $thisdir/$entry ]; then
+	    checkcvs $thisdir/$entry
+	fi
+    done
+
+    return 0
+}
+
+exclude=
+dir=
+while [ $# -gt 0 ]; do
+    case $1 in
+	-x)
+	    exclude=$2
+	    shift
+	    shift
+	    ;;
+	*)
+	    dir=$1
+	    break
+	    ;;
+    esac
+done
+
+checkcvs $dir "$exclude"
+# exclusion not implemented yet

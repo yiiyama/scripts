@@ -1,0 +1,42 @@
+#!/bin/bash
+
+unit=''
+showunit=0
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        -M)
+            unit=' (MB)'
+            shift
+            ;;
+	-G)
+            unit=' (GB)'
+	    shift
+	    ;;
+        -u)
+            showunit=1
+            shift
+            ;;
+	*)
+	    break
+	    ;;
+    esac
+done
+
+format='%d'
+divisor='1'
+if [ "$unit" = ' (MB)' ]; then
+    divisor='1024/1024'
+    format='%.2f'
+    if [ $showunit -eq 1 ]; then
+        format=$format$unit
+    fi
+elif [ "$unit" = ' (GB)' ]; then
+    divisor='1024/1024/1024'
+    format='%.2f'
+    if [ $showunit -eq 1 ]; then
+        format=$format$unit
+    fi
+fi
+
+ls -lR $1 | awk 'START {size = 0}; /^[d-][rwx-]+/ {size += $5}; END {printf("'"$format"'\n", size/'"$divisor"')}'
