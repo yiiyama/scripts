@@ -1,0 +1,47 @@
+#!/bin/bash
+#to be used with nsls
+
+_eoscomp()
+{
+    local curw
+    list=""
+
+    COMPREPLY=()
+    curw=${COMP_WORDS[COMP_CWORD]}
+
+    if [ -z "$curw" ]; then
+        list="/store/"
+    else
+        path=$(echo "$curw" | sed -n -r 's|^(.*)[/][^/]*$|\1|p')
+        name=$(echo "$curw" | sed -r 's|([^/]*)$|/ \1|' | awk '{print $2}')
+
+        insertion=""
+        if [ -n "$name" ]; then
+            insertion="${path}/"
+        fi
+
+        lines=$(eos ls -l $path)
+        ifsorig=$IFS
+        IFS=$'\n'
+        for line in $lines; do
+            type="${line:0:1}"
+            file="$(echo $line | sed -r 's/^.*[ ]([^ ]+)$/\1/')"
+            if [ -z "$name" -o -n "$(echo $file | grep '^'$name'')" ]; then
+                if [ $type == "d" ]; then
+                    list="${list}${insertion}${file}/ "
+                else
+                    list="${list}${insertion}${file} "
+                fi
+            fi
+        done
+        IFS=$ifsorig
+
+        if [ -z "$list" ]; then
+            list=$curw
+        fi
+    fi
+    
+    COMPREPLY=($list)
+
+    return 0
+}

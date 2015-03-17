@@ -1,10 +1,11 @@
 #!/bin/bash
 
 while [ $# -ne 0 ]; do
-    [ -L $1 ] || continue
-
-    TARGET=$(readlink $1)
-    rm -r $TARGET > /dev/null 2>&1
-    rm $1 > /dev/null 2>&1
+    FILE=$1
+    if [ -L $FILE ]; then
+        TARGET=$(readlink $FILE)
+        rm -r $TARGET
+    fi
+    rm -r $FILE
     shift
 done

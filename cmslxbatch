@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ -z "$CMSSW_BASE" ]; then
+    echo "CMSSW not set up"
+    exit 1
+fi
+
+options=${@:1:$(($#-1))}
+command=${@:${#@}}
+
+precommand="cd $CMSSW_BASE;eval "'`scramv1 runtime -sh`'";"
+
+if [[ $HOSTNAME =~ '^lxplus' ]]; then
+    bsub $options "$precommand$command"
+else
+    ssh lxplus5 "bsub $options '$precommand$command'"
+fi

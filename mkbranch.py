@@ -6,11 +6,16 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option("-r", "--read", action="store_true", dest="readMode")
+parser.add_option("-s", "--set-status", action="store_true", dest="setStatus")
+parser.add_option("-u", "--keep-underscore", action='store_true', dest='keepUnderscore')
 
 (options, args) = parser.parse_args()
 
 inputName = args[0]
 tree = args[1]
+
+if tree[len(tree) - 1] != '.':
+    tree += '->'
 
 try:
     input = file(inputName, "r")
@@ -21,10 +26,13 @@ prog = re.compile('[ ]*([a-zA-Z_ ]+)[ ]+([a-zA-Z_][a-zA-Z0-9_]*)(|\[[a-zA-Z0-9:_
 
 output = ""
 
+if options.readMode and options.setStatus:
+    output += tree + 'SetBranchStatus("*", 0);\n'
+
 parse = False
 for line in input:
     if 'mkbranch' in line:
-        parse = True
+        parse = not parse
 
     if not parse:
         continue
@@ -33,9 +41,26 @@ for line in input:
     if not result:
         continue
 
-    typeName = result.group(1).strip()
     varName = result.group(2)
+    if options.keepUnderscore:
+        bName = varName
+    else:
+        bName = varName.strip('_')
     isArray = len(result.group(3)) != 0
+
+    if options.readMode:
+        if options.setStatus:
+            output += tree + 'SetBranchStatus("' + bName + '", 1);\n'
+
+        output += tree + 'SetBranchAddress("' + bName + '", '
+        if not isArray:
+            output += '&'
+
+        output += varName + ');\n'
+
+        continue
+
+    typeName = result.group(1).strip()
 
     unsigned = False
     if "unsigned" in typeName:
@@ -64,21 +89,14 @@ for line in input:
     if unsigned:
         typeId = typeId.lower()
 
-    if options.readMode:
-        output += tree + '->SetBranchAddress("' + varName + '", '
-        if not isArray:
-            output += '&'
+    output += tree + 'Branch("' + bName + '", '
+    if not isArray:
+        output += '&'
 
-        output += varName + ');\n'
-    else:    
-        output += tree + '->Branch("' + varName + '", '
-        if not isArray:
-            output += '&'
-
-        output += varName + ', "' + varName
-        if isArray:
-            output += '[SIZEVAR]'
-            
-        output += '/' + typeId + '");\n'
+    output += varName + ', "' + bName
+    if isArray:
+        output += '[SIZEVAR]'
+        
+    output += '/' + typeId + '");\n'
 
 print output
